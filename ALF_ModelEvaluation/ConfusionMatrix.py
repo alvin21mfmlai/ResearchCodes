@@ -58,7 +58,7 @@ for scenario, timeThreshold in scenarioDict.items():
     df_ZoneGroup['Precision%']=(df_ZoneGroup['TP']/df_ZoneGroup['Total detected events'])*100
     df_ZoneGroup = df_ZoneGroup[['TP','FP','Total detected events','Precision%']]
     df_ZoneGroup.to_csv('Confusion matrix_Scenario' + str(scenario) + '_' + str(timeThreshold) + 'mins.csv',
-                         index = False)
+                         index = True)
 
 # ### 4. Calculate TP, FP and precision (Confusion matrix)
 # # Scenario 1: consider all system events
