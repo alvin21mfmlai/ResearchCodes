@@ -9,6 +9,7 @@ scenarioDict = {"S1":0,
 ### 1. Read detected system event and reported events data
 ## Data of ALF detected system events
 df_detected = pd.read_csv('EventsList.csv')
+df_detected = df_detected[df_detected['MNF'] == 1].reset_index(drop=True)
 df_detected = df_detected[['Start Time','End Time','Duration','Zone','Event Sensors']]
 
 ## Data of PUB reported events
@@ -59,42 +60,6 @@ for scenario, timeThreshold in scenarioDict.items():
     df_ZoneGroup = df_ZoneGroup[['TP','FP','Total detected events','Precision%']]
     df_ZoneGroup.to_csv('Confusion matrix_Scenario' + str(scenario) + '_' + str(timeThreshold) + 'mins.csv',
                          index = True)
-
-# ### 4. Calculate TP, FP and precision (Confusion matrix)
-# # Scenario 1: consider all system events
-# df_ZoneGroup1 = df_TorF.groupby('Zone')['T/F'].agg(['sum','count']).rename(columns={'sum':'TP'})
-# df_ZoneGroup1['Total detected events'] = df_ZoneGroup1['count']
-# df_ZoneGroup1['FP'] = df_ZoneGroup1['Total detected events']-df_ZoneGroup1['TP']
-# df_ZoneGroup1['Precision%']=df_ZoneGroup1['TP']/df_ZoneGroup1['Total detected events']*100
-# df_ZoneGroup1 = df_ZoneGroup1[['TP','FP','Total detected events','Precision%']]
-# df_ZoneGroup1.to_csv('Confusion matrix_Scenario 1.csv')
-
-# # Scenario 2: duration<1440 (0 day)
-# df_ZoneGroup2 = df_TorF.groupby('Zone')
-# df_ZoneGroup2 = df_ZoneGroup2[['Duration', 'T/F']].apply(lambda x: x[x['Duration'] < 1440]['T/F'].agg(['sum','count'])).rename(columns={'sum':'TP'})
-# df_ZoneGroup2['Total detected events'] = df_ZoneGroup2['count']
-# df_ZoneGroup2['FP'] = df_ZoneGroup2['Total detected events']-df_ZoneGroup2['TP']
-# df_ZoneGroup2['Precision%']=df_ZoneGroup2['TP']/df_ZoneGroup2['Total detected events']*100
-# df_ZoneGroup2 = df_ZoneGroup2[['TP','FP','Total detected events','Precision%']]
-# df_ZoneGroup2.to_csv('Confusion matrix_Scenario 2.csv')
-
-# # Scenario 3: 1440<=duration<4320 (1-3 days)
-# df_ZoneGroup3 = df_TorF.groupby('Zone')
-# df_ZoneGroup3 = df_ZoneGroup3[['Duration', 'T/F']].apply(lambda x: x[(x['Duration'] >= 1440) & (x['Duration'] < 4320)]['T/F'].agg(['sum','count'])).rename(columns={'sum':'TP'})
-# df_ZoneGroup3['Total detected events'] = df_ZoneGroup3['count']
-# df_ZoneGroup3['FP'] = df_ZoneGroup3['Total detected events']-df_ZoneGroup3['TP']
-# df_ZoneGroup3['Precision%']=df_ZoneGroup2['TP']/df_ZoneGroup3['Total detected events']*100
-# df_ZoneGroup3 = df_ZoneGroup3[['TP','FP','Total detected events','Precision%']]
-# df_ZoneGroup3.to_csv('Confusion matrix_Scenario 3.csv')
-
-# # Scenario 4: duration>=4320 (>3 days)
-# df_ZoneGroup4 = df_TorF.groupby('Zone')
-# df_ZoneGroup4 = df_ZoneGroup4[['Duration', 'T/F']].apply(lambda x: x[x['Duration'] >= 4320]['T/F'].agg(['sum','count'])).rename(columns={'sum':'TP'})
-# df_ZoneGroup4['Total detected events'] = df_ZoneGroup4['count']
-# df_ZoneGroup4['FP'] = df_ZoneGroup4['Total detected events']-df_ZoneGroup4['TP']
-# df_ZoneGroup4['Precision%']=df_ZoneGroup4['TP']/df_ZoneGroup4['Total detected events']*100
-# df_ZoneGroup4 = df_ZoneGroup4[['TP','FP','Total detected events','Precision%']]
-# df_ZoneGroup4.to_csv('Confusion matrix_Scenario 4.csv')
 
 ######################## end of code ######################################################
 
