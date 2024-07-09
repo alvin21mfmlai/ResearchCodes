@@ -27,11 +27,12 @@ from dash.dependencies import Input, Output
 import plotly.graph_objs as go
 
 selectedZone = 'Schiedam Vlaardingen' ## change zone name
-
 srcPath = r'D:\WaterSights\Netherlands\HydraulicData\zones' ## change src path 
+
 zoneSrcPath = os.path.join(srcPath, selectedZone, 'Raw')
+if not os.path.exists(zoneSrcPath): os.mkdir(zoneSrcPath)
 zoneProcessedPath = os.path.join(srcPath, selectedZone, 'Processed')
-os.makedirs(zoneProcessedPath, exist_ok=True)
+if not os.path.exists(zoneProcessedPath): os.mkdir(zoneSrcPath)
 
 # List of CSV file paths
 file_paths = [os.path.join(zoneSrcPath, item) for item in os.listdir(zoneSrcPath) if item.endswith('.csv')]
