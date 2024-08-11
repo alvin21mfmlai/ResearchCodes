@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 from scipy.signal import welch
 from PyEMD import EEMD
+from scipy.io.wavfile import write, read
 
 def extract_datetime(file_content):
     """
@@ -14,7 +15,7 @@ def extract_datetime(file_content):
     month, day, year = map(lambda x: x.lstrip('0'), date_item.split("-"))
     return f"{month}/{day}/{year} {time_item}"
 
-def read_hydrophone_data(src_path):
+def read_hydrophone_data(src_path, samplingRate):
     """
     Reads hydrophone data from the given source path and organizes it into a dictionary.
     """
@@ -25,6 +26,8 @@ def read_hydrophone_data(src_path):
         station_path = os.path.join(src_path, station)
         readings_path = os.path.join(station_path, 'hydrophone', 'readings')
         data_series_folder = os.path.join(station_path, 'hydrophone', 'dataSeries')
+        wav_files_folder = os.path.join(station_path, 'hydrophone', 'wavFiles')
+        if not os.path.exists(wav_files_folder): os.mkdir(wav_files_folder)
         
         os.makedirs(data_series_folder, exist_ok=True)
         data_dict[station] = dict()
@@ -44,65 +47,46 @@ def read_hydrophone_data(src_path):
                 datadf = pd.DataFrame({'Values': data_dict[station][datetime_str]})
                 sanitized_datetime_str = datetime_str.replace('/', "_").replace(':', "_")
                 datadf.to_csv(os.path.join(data_series_folder, f"{sanitized_datetime_str}.csv"), index=False)
+                
+                # Convert data to WAV files using following steps:
+                
+                ## a. Normalize the data to the range of -1 to 1
+                normalized_data = (data_values - np.min(data_values)) / (np.max(data_values) - np.min(data_values))
+                normalized_data = 2 * (normalized_data - 0.5)
+
+                ## b. Convert to 16-bit PCM format
+                pcm_data = np.int16(normalized_data * 32767)
+
+                ## c. Save the data to a WAV file with a sample rate of 8000 Hz
+                output_wav_path = wav_files_folder + '/' + hydrophone_file.split('.')[0] + '.wav'
+                write(output_wav_path, samplingRate, pcm_data)
+                
+                ## d. Extract data from WAV file to double check if extracted data aligns with original data values
+                ### d.1. Read the WAV file
+                sample_rate, pcm_data = read(output_wav_path)
+
+                ### d.2. Normalize the data back to the original range
+                normalized_data = pcm_data / 32767.0
+
+                ### d.3. Convert the normalized data back to the original range
+                original_min = np.min(data_values)
+                original_max = np.max(data_values)
+                extracted_data = normalized_data * (original_max - original_min) / 2 + (original_max + original_min) / 2
+                if (np.array(extracted_data).all() == np.array(data_values).all()): 
+                    print("Ok for File: " + hydrophone_file)
+                    print(np.array(extracted_data)[:10])
+                    print(np.array(data_values)[:10])
+                    print()
     
     return data_dict
 
-def compute_psd_and_save(data, sample_rate, output_folder, data_file):
-    """
-    Computes Power Spectral Density (PSD) and saves it to a CSV file.
-    """
-    frequencies, psd = welch(data, fs=sample_rate, nperseg=4096)
-    psd_df = pd.DataFrame({'Frequency (Hz)': frequencies, 'PSD': psd})
-    psd_df.to_csv(os.path.join(output_folder, f"{data_file}_psd.csv"), index=False)
-
-def compute_imfs_and_save(data, sample_rate, output_folder, data_file, parallel=True, processes=4):
-    """
-    Computes Intrinsic Mode Functions (IMFs) using EEMD and saves them along with their PSDs.
-    """
-    eemd = EEMD(parallel=parallel, processes=processes)
-    IMFs = eemd.eemd(data)
-    
-    imf_df = pd.DataFrame(IMFs).T
-    imf_df.columns = [f'IMF_{i+1}' for i in range(len(IMFs))]
-    imf_df.insert(0, 'Original', data)
-    
-    # Save all IMFs to CSV
-    imf_df.to_csv(os.path.join(output_folder, f"{data_file}_IMFs.csv"), index=False)
-    
-    # Compute and save PSD for each IMF
-    psd_imf_df = pd.DataFrame()
-    psd_imf_df['Frequency (Hz)'] = welch(data, fs=sample_rate, nperseg=4096)[0]
-    
-    for i in range(len(IMFs)):
-        _, psd_imf = welch(IMFs[i], fs=sample_rate, nperseg=4096)
-        psd_imf_df[f'PSD_IMF_{i+1}'] = psd_imf
-    
-    psd_imf_df.to_csv(os.path.join(output_folder, f"{data_file}_All_IMFs_psd.csv"), index=False)
-
-def process_hydrophone_data(src_path, sample_rate=16000):
+def process_hydrophone_data(src_path,sampling_rate):
     """
     Processes hydrophone data: reads data, computes PSDs and IMFs, and saves the results.
     """
-    data_dict = read_hydrophone_data(src_path)
-    
-    for station in os.listdir(src_path):
-        station_path = os.path.join(src_path, station)
-        data_series_path = os.path.join(station_path, 'hydrophone', 'dataSeries')
-        psd_folder = os.path.join(station_path, 'hydrophone', 'PSD')
-        imf_folder = os.path.join(station_path, 'hydrophone', 'IMFs')
-        
-        os.makedirs(psd_folder, exist_ok=True)
-        os.makedirs(imf_folder, exist_ok=True)
-        
-        for data_file in os.listdir(data_series_path):
-            data = pd.read_csv(os.path.join(data_series_path, data_file))['Values'].values
-            
-            # Compute and save PSD
-            compute_psd_and_save(data, sample_rate, psd_folder, data_file[:-4])
-            
-            # Compute and save IMFs and their PSDs
-            compute_imfs_and_save(data, sample_rate, imf_folder, data_file[:-4])
+    data_dict = read_hydrophone_data(src_path,sampling_rate)
 
 if __name__ == "__main__":
-    src_path = r'D:\ALFTool\Data\Hydrophones\Sample' ## change src path
-    process_hydrophone_data(src_path)
+    src_path = r'D:\ALFTool\Data\Hydrophones\Sample'
+    sampling_rate = 8000 ## measured in Hz
+    process_hydrophone_data(src_path,sampling_rate)
